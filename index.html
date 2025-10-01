@@ -52,7 +52,7 @@
     <button onclick="saveMeme()">Save / Open Meme</button>
   </div>
 
-  <p class="hint">💾 Desktop: downloads directly. Mobile: opens image in new tab (long-press → Save Image).</p>
+  <p class="hint">💾 Desktop: downloads directly. Mobile: opens in new tab (long-press → Save Image).</p>
 
   <script>
     const canvas = document.getElementById("memeCanvas");
@@ -162,21 +162,26 @@
 
     function saveMeme() {
       draw(); // refresh before saving
-      const dataUrl = canvas.toDataURL("image/png");
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      if (isMobile) {
-        // open in new tab (mobile long-press save)
-        window.open(dataUrl, "_blank");
-      } else {
-        // desktop: force download
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "spirit-meme.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      // Use Blob instead of dataURL (fixes black screen on mobile)
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+          // Mobile: open blob in new tab (long-press to save works)
+          window.open(url, "_blank");
+        } else {
+          // Desktop: force download
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "spirit-meme.png";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url); // cleanup
+        }
+      }, "image/png");
     }
 
     draw();
