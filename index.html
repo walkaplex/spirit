@@ -14,7 +14,18 @@
     }
     #offsetSlider { width: 300px; }
     .hint { color:#aaa; font-size:13px; margin-top:8px; }
-    label { display: block; margin-top: 10px; }
+    label { display:block; margin-top:10px; }
+    button {
+      margin-top: 10px;
+      padding: 8px 14px;
+      background: #ff9900;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.1); }
   </style>
 </head>
 <body>
@@ -37,7 +48,11 @@
 
   <canvas id="memeCanvas" width="800" height="1200"></canvas>
 
-  <p class="hint">💾 To save: right-click the canvas and choose <b>“Save image as…”</b></p>
+  <div>
+    <button onclick="saveMeme()">Save / Open Meme</button>
+  </div>
+
+  <p class="hint">💾 Desktop: downloads directly. Mobile: opens image in new tab (long-press → Save Image).</p>
 
   <script>
     const canvas = document.getElementById("memeCanvas");
@@ -91,7 +106,6 @@
 
       // --- Draw user photo scaled to the oval area ---
       if (userImage) {
-        // bounding box of the oval in your template
         const ovalX = 420, ovalY = 180, ovalW = 330, ovalH = 600;
 
         const scale = Math.max(ovalW / userImage.width, ovalH / userImage.height);
@@ -144,6 +158,25 @@
         }
       }
       ctx.fillText(line, x, y);
+    }
+
+    function saveMeme() {
+      draw(); // refresh before saving
+      const dataUrl = canvas.toDataURL("image/png");
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile) {
+        // open in new tab (mobile long-press save)
+        window.open(dataUrl, "_blank");
+      } else {
+        // desktop: force download
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = "spirit-meme.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     }
 
     draw();
