@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spirit Halloween Meme Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; background:#121212; color:#eee; text-align:center; padding:20px; }
+    h1 { color:#ff9900; margin-bottom:10px; }
+    #memeCanvas { border:2px solid #444; margin-top:16px; background:#fff; max-width:100%; height:auto; }
+    input { margin:6px; padding:6px; border-radius:4px; border:1px solid #333; background:#1e1e1e; color:#eee; }
+    .hint { color:#aaa; font-size:13px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <h1>🎃 Spirit Halloween Meme Generator</h1>
+
+  <div>
+    <div>
+      <label>Costume Title:</label><br/>
+      <input id="title" value="Guy Who Asks for WiFi Password" />
+    </div>
+
+    <div>
+      <label>Details (comma-separated):</label><br/>
+      <input id="details" size="60" value="Includes: hoodie, laptop, bad vibes" />
+    </div>
+
+    <div>
+      <label>Upload Costume Image:</label><br/>
+      <input type="file" id="upload" accept="image/*" />
+    </div>
+  </div>
+
+  <canvas id="memeCanvas" width="800" height="1200"></canvas>
+
+  <p class="hint">💾 To save: right-click the canvas and choose <b>“Save image as…”</b></p>
+
+  <script>
+    const canvas = document.getElementById("memeCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const titleInput = document.getElementById("title");
+    const detailsInput = document.getElementById("details");
+    const uploadInput = document.getElementById("upload");
+
+    const template = new Image();
+    let templateLoaded = false;
+    let userImage = null;
+
+    template.onload = () => { templateLoaded = true; draw(); };
+    template.onerror = () => {
+      ctx.fillStyle = "#ffcc00";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#000";
+      ctx.font = "36px Arial";
+      ctx.fillText("⚠️ Missing spirit1-mask.png", 150, 600);
+    };
+    template.src = "spirit1-mask.png";  // <-- your cutout PNG
+
+    uploadInput.addEventListener("change", e => {
+      const file = e.target.files?.[0];
+      if (!file) { userImage = null; draw(); return; }
+      const reader = new FileReader();
+      reader.onload = evt => {
+        userImage = new Image();
+        userImage.onload = draw;
+        userImage.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    titleInput.addEventListener("input", draw);
+    detailsInput.addEventListener("input", draw);
+
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // Draw uploaded photo first (scaled to cover canvas)
+      if (userImage) {
+        const scale = Math.max(canvas.width / userImage.width, canvas.height / userImage.height);
+        const newW = userImage.width * scale;
+        const newH = userImage.height * scale;
+        const offX = (canvas.width - newW) / 2;
+        const offY = (canvas.height - newH) / 2;
+        ctx.drawImage(userImage, offX, offY, newW, newH);
+      }
+
+      // Draw template mask (already cutout)
+      if (templateLoaded) {
+        ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+      }
+
+      // Title
+      const title = titleInput.value.trim();
+      if (title) {
+        ctx.font = "bold 32px Arial";
+        ctx.fillStyle = "#000";
+        wrapText(ctx, title, 40, 280, 320, 36);
+      }
+
+      // Details
+      const detRaw = detailsInput.value.trim();
+      if (detRaw) {
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#000";
+        let y = 650;
+        detRaw.split(",").map(s => s.trim()).filter(Boolean).forEach(txt => {
+          wrapText(ctx, "• " + txt, 40, y, 320, 28);
+          y += 36;
+        });
+      }
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      for (let i = 0; i < words.length; i++) {
+        const test = line + words[i] + " ";
+        if (ctx.measureText(test).width > maxWidth && i > 0) {
+          ctx.fillText(line, x, y);
+          line = words[i] + " ";
+          y += lineHeight;
+        } else {
+          line = test;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    draw();
+  </script>
+</body>
+</html>
