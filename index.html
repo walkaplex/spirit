@@ -49,25 +49,25 @@
   <canvas id="memeCanvas" width="800" height="1200"></canvas>
 
   <div>
-    <button onclick="saveMeme()">Save / Open Meme</button>
+    <button id="saveBtn">Save / Open Meme</button>
   </div>
 
-  <p class="hint">💾 Desktop: downloads directly. Mobile: opens image in new tab (long-press → Save Image).</p>
+  <p class="hint">💾 Desktop: downloads directly. Mobile: opens in a new tab so you can long-press → “Save Image”.</p>
 
   <script>
     const canvas = document.getElementById("memeCanvas");
     const ctx = canvas.getContext("2d");
 
-    const titleInput = document.getElementById("title");
+    const titleInput   = document.getElementById("title");
     const detailsInput = document.getElementById("details");
-    const uploadInput = document.getElementById("upload");
+    const uploadInput  = document.getElementById("upload");
     const offsetSlider = document.getElementById("offsetSlider");
-    const offsetValue = document.getElementById("offsetValue");
+    const offsetValue  = document.getElementById("offsetValue");
+    const saveBtn      = document.getElementById("saveBtn");
 
     const template = new Image();
     let templateLoaded = false;
     let userImage = null;
-
     let offsetXAdjustment = parseInt(offsetSlider.value, 10);
 
     template.onload = () => { templateLoaded = true; draw(); };
@@ -78,7 +78,8 @@
       ctx.font = "36px Arial";
       ctx.fillText("⚠️ Missing spirit1-mask.png", 150, 600);
     };
-    template.src = "spirit1-mask.png";  // cutout PNG with transparent oval
+    // Your cutout PNG with transparent oval (same folder as this file)
+    template.src = "spirit1-mask.png";
 
     uploadInput.addEventListener("change", e => {
       const file = e.target.files?.[0];
@@ -104,7 +105,7 @@
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      // --- Draw user photo scaled to the oval area ---
+      // 1) User photo scaled/centered in the oval bounding box (+ adjustable horizontal nudge)
       if (userImage) {
         const ovalX = 420, ovalY = 180, ovalW = 330, ovalH = 600;
 
@@ -118,12 +119,12 @@
         ctx.drawImage(userImage, offX, offY, newW, newH);
       }
 
-      // --- Draw template cutout on top ---
+      // 2) Draw the mask/template over it
       if (templateLoaded) {
         ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
       }
 
-      // --- Title ---
+      // 3) Title & details on top
       const title = titleInput.value.trim();
       if (title) {
         ctx.font = "bold 32px Arial";
@@ -131,7 +132,6 @@
         wrapText(ctx, title, 40, 280, 320, 36);
       }
 
-      // --- Details ---
       const detRaw = detailsInput.value.trim();
       if (detRaw) {
         ctx.font = "20px Arial";
@@ -160,31 +160,83 @@
       ctx.fillText(line, x, y);
     }
 
+    // --- Cross-platform save/open (mobile friendly) ---
+    saveBtn.addEventListener("click", saveMeme);
+
     function saveMeme() {
-      draw(); // refresh before saving
+      draw(); // ensure latest
 
-      canvas.toBlob(function(blob) {
-        const url = URL.createObjectURL(blob);
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "spirit-meme.png";
-
-        if (isMobile) {
-          // Mobile: open in new tab (long-press to save)
-          link.target = "_blank";
+      // OPEN A TAB *IMMEDIATELY* (so mobile won't block it)
+      let tabRef = null;
+      if (isMobile) {
+        tabRef = window.open("about:blank", "_blank");
+        if (!tabRef) {
+          alert("Please allow pop-ups to save the image.");
+          return;
         }
+        // basic skeleton so user doesn't see a blank page
+        tabRef.document.title = "Spirit Meme";
+        tabRef.document.body.style = "margin:0;background:#000;display:flex;align-items:center;justify-content:center;";
+        tabRef.document.body.innerHTML = "<div style='color:#fff;font:16px Arial'>Preparing image…</div>";
+      }
 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      try {
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            // Rare fallback: use dataURL if toBlob not available
+            const dataUrl = canvas.toDataURL("image/png");
+            if (isMobile) {
+              tabRef.location.href = dataUrl;
+            } else {
+              const a = document.createElement("a");
+              a.href = dataUrl;
+              a.download = "spirit-meme.png";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }
+            return;
+          }
 
-        // cleanup
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }, "image/png");
+          const url = URL.createObjectURL(blob);
+
+          if (isMobile) {
+            // Render the image inside the already-opened tab (reliable on iOS/Android)
+            tabRef.document.body.innerHTML =
+              "<img id='memeOut' alt='meme' style='width:100%;height:auto;display:block' />";
+            const img = tabRef.document.getElementById("memeOut");
+            img.src = url;
+            // don't revoke immediately; let user save. You can clean up when tab closes.
+          } else {
+            // Desktop: direct download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "spirit-meme.png";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+          }
+        }, "image/png");
+      } catch (e) {
+        // Very defensive fallback
+        const dataUrl = canvas.toDataURL("image/png");
+        if (isMobile && tabRef) {
+          tabRef.location.href = dataUrl;
+        } else {
+          const a = document.createElement("a");
+          a.href = dataUrl;
+          a.download = "spirit-meme.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      }
     }
 
+    // Initial draw
     draw();
   </script>
 </body>
