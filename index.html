@@ -8,28 +8,31 @@
     body { font-family: Arial, sans-serif; background:#121212; color:#eee; text-align:center; padding:20px; }
     h1 { color:#ff9900; margin-bottom:10px; }
     #memeCanvas { border:2px solid #444; margin-top:16px; background:#fff; max-width:100%; height:auto; }
-    input { margin:6px; padding:6px; border-radius:4px; border:1px solid #333; background:#1e1e1e; color:#eee; }
+    input, #offsetSlider {
+      margin:6px; padding:6px; border-radius:4px; border:1px solid #333;
+      background:#1e1e1e; color:#eee;
+    }
+    #offsetSlider { width: 300px; }
     .hint { color:#aaa; font-size:13px; margin-top:8px; }
+    label { display: block; margin-top: 10px; }
   </style>
 </head>
 <body>
   <h1>🎃 Spirit Halloween Meme Generator</h1>
 
   <div>
-    <div>
-      <label>Costume Title:</label><br/>
-      <input id="title" value="Guy Who Asks for WiFi Password" />
-    </div>
+    <label>Costume Title:</label>
+    <input id="title" value="Guy Who Asks for WiFi Password" />
 
-    <div>
-      <label>Details (comma-separated):</label><br/>
-      <input id="details" size="60" value="Includes: hoodie, laptop, bad vibes" />
-    </div>
+    <label>Details (comma-separated):</label>
+    <input id="details" size="60" value="Includes: hoodie, laptop, bad vibes" />
 
-    <div>
-      <label>Upload Costume Image:</label><br/>
-      <input type="file" id="upload" accept="image/*" />
-    </div>
+    <label>Upload Costume Image:</label>
+    <input type="file" id="upload" accept="image/*" />
+
+    <label>Adjust Horizontal Offset:</label>
+    <input type="range" id="offsetSlider" min="-100" max="100" value="30" />
+    <span id="offsetValue">30</span> px
   </div>
 
   <canvas id="memeCanvas" width="800" height="1200"></canvas>
@@ -43,10 +46,14 @@
     const titleInput = document.getElementById("title");
     const detailsInput = document.getElementById("details");
     const uploadInput = document.getElementById("upload");
+    const offsetSlider = document.getElementById("offsetSlider");
+    const offsetValue = document.getElementById("offsetValue");
 
     const template = new Image();
     let templateLoaded = false;
     let userImage = null;
+
+    let offsetXAdjustment = parseInt(offsetSlider.value, 10);
 
     template.onload = () => { templateLoaded = true; draw(); };
     template.onerror = () => {
@@ -73,6 +80,12 @@
     titleInput.addEventListener("input", draw);
     detailsInput.addEventListener("input", draw);
 
+    offsetSlider.addEventListener("input", () => {
+      offsetXAdjustment = parseInt(offsetSlider.value, 10);
+      offsetValue.textContent = offsetXAdjustment;
+      draw();
+    });
+
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -84,7 +97,8 @@
         const scale = Math.max(ovalW / userImage.width, ovalH / userImage.height);
         const newW = userImage.width * scale;
         const newH = userImage.height * scale;
-        const offX = ovalX + (ovalW - newW) / 2;
+
+        const offX = ovalX + (ovalW - newW) / 2 + offsetXAdjustment;
         const offY = ovalY + (ovalH - newH) / 2;
 
         ctx.drawImage(userImage, offX, offY, newW, newH);
