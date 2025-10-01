@@ -56,7 +56,7 @@
       ctx.font = "36px Arial";
       ctx.fillText("⚠️ Missing spirit1-mask.png", 150, 600);
     };
-    template.src = "spirit1-mask.png";  // <-- your cutout PNG
+    template.src = "spirit1-mask.png";  // cutout PNG with transparent oval
 
     uploadInput.addEventListener("change", e => {
       const file = e.target.files?.[0];
@@ -76,22 +76,26 @@
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      // Draw uploaded photo first (scaled to cover canvas)
+      // --- Draw user photo scaled to the oval area ---
       if (userImage) {
-        const scale = Math.max(canvas.width / userImage.width, canvas.height / userImage.height);
+        // bounding box of the oval in your template
+        const ovalX = 420, ovalY = 180, ovalW = 330, ovalH = 600;
+
+        const scale = Math.max(ovalW / userImage.width, ovalH / userImage.height);
         const newW = userImage.width * scale;
         const newH = userImage.height * scale;
-        const offX = (canvas.width - newW) / 2;
-        const offY = (canvas.height - newH) / 2;
+        const offX = ovalX + (ovalW - newW) / 2;
+        const offY = ovalY + (ovalH - newH) / 2;
+
         ctx.drawImage(userImage, offX, offY, newW, newH);
       }
 
-      // Draw template mask (already cutout)
+      // --- Draw template cutout on top ---
       if (templateLoaded) {
         ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
       }
 
-      // Title
+      // --- Title ---
       const title = titleInput.value.trim();
       if (title) {
         ctx.font = "bold 32px Arial";
@@ -99,7 +103,7 @@
         wrapText(ctx, title, 40, 280, 320, 36);
       }
 
-      // Details
+      // --- Details ---
       const detRaw = detailsInput.value.trim();
       if (detRaw) {
         ctx.font = "20px Arial";
