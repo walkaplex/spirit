@@ -5,14 +5,19 @@
   <title>Spirit Halloween Meme Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; background:#121212; color:#eee; text-align:center; padding:20px; }
+    body { font-family: Arial, sans-serif; background:#121212; color:#eee; text-align:center; padding:20px; margin:0; }
     h1 { color:#ff9900; margin-bottom:10px; }
     #memeCanvas { border:2px solid #444; margin-top:16px; background:#fff; max-width:100%; height:auto; }
     input, #offsetSlider {
       margin:6px; padding:6px; border-radius:4px; border:1px solid #333;
       background:#1e1e1e; color:#eee;
     }
-    #offsetSlider { width: 300px; }
+    #details, #title {
+      width: 90%;
+      max-width: 500px;
+      box-sizing: border-box;
+    }
+    #offsetSlider { width: 90%; max-width: 300px; }
     .hint { color:#aaa; font-size:13px; margin-top:8px; }
     label { display:block; margin-top:10px; }
     button {
@@ -26,17 +31,18 @@
       cursor: pointer;
     }
     button:hover { filter: brightness(1.1); }
+    .form { display:flex; flex-direction:column; align-items:center; }
   </style>
 </head>
 <body>
   <h1>🎃 Spirit Halloween Meme Generator</h1>
 
-  <div>
+  <div class="form">
     <label>Costume Title:</label>
     <input id="title" value="Guy Who Asks for WiFi Password" />
 
     <label>Details (comma-separated):</label>
-    <input id="details" size="60" value="Includes: hoodie, laptop, bad vibes" />
+    <input id="details" value="Includes: hoodie, laptop, bad vibes" />
 
     <label>Upload Costume Image:</label>
     <input type="file" id="upload" accept="image/*" />
@@ -78,7 +84,6 @@
       ctx.font = "36px Arial";
       ctx.fillText("⚠️ Missing spirit1-mask.png", 150, 600);
     };
-    // Your cutout PNG with transparent oval (same folder as this file)
     template.src = "spirit1-mask.png";
 
     uploadInput.addEventListener("change", e => {
@@ -105,26 +110,18 @@
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      // 1) User photo scaled/centered in the oval bounding box (+ adjustable horizontal nudge)
       if (userImage) {
         const ovalX = 420, ovalY = 180, ovalW = 330, ovalH = 600;
-
         const scale = Math.max(ovalW / userImage.width, ovalH / userImage.height);
         const newW = userImage.width * scale;
         const newH = userImage.height * scale;
-
         const offX = ovalX + (ovalW - newW) / 2 + offsetXAdjustment;
         const offY = ovalY + (ovalH - newH) / 2;
-
         ctx.drawImage(userImage, offX, offY, newW, newH);
       }
 
-      // 2) Draw the mask/template over it
-      if (templateLoaded) {
-        ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
-      }
+      if (templateLoaded) ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
-      // 3) Title & details on top
       const title = titleInput.value.trim();
       if (title) {
         ctx.font = "bold 32px Arial";
@@ -160,83 +157,37 @@
       ctx.fillText(line, x, y);
     }
 
-    // --- Cross-platform save/open (mobile friendly) ---
     saveBtn.addEventListener("click", saveMeme);
 
     function saveMeme() {
-      draw(); // ensure latest
-
+      draw();
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      // OPEN A TAB *IMMEDIATELY* (so mobile won't block it)
       let tabRef = null;
       if (isMobile) {
         tabRef = window.open("about:blank", "_blank");
-        if (!tabRef) {
-          alert("Please allow pop-ups to save the image.");
-          return;
-        }
-        // basic skeleton so user doesn't see a blank page
+        if (!tabRef) { alert("Please allow pop-ups to save the image."); return; }
         tabRef.document.title = "Spirit Meme";
         tabRef.document.body.style = "margin:0;background:#000;display:flex;align-items:center;justify-content:center;";
         tabRef.document.body.innerHTML = "<div style='color:#fff;font:16px Arial'>Preparing image…</div>";
       }
 
-      try {
-        canvas.toBlob(function(blob) {
-          if (!blob) {
-            // Rare fallback: use dataURL if toBlob not available
-            const dataUrl = canvas.toDataURL("image/png");
-            if (isMobile) {
-              tabRef.location.href = dataUrl;
-            } else {
-              const a = document.createElement("a");
-              a.href = dataUrl;
-              a.download = "spirit-meme.png";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }
-            return;
-          }
-
-          const url = URL.createObjectURL(blob);
-
-          if (isMobile) {
-            // Render the image inside the already-opened tab (reliable on iOS/Android)
-            tabRef.document.body.innerHTML =
-              "<img id='memeOut' alt='meme' style='width:100%;height:auto;display:block' />";
-            const img = tabRef.document.getElementById("memeOut");
-            img.src = url;
-            // don't revoke immediately; let user save. You can clean up when tab closes.
-          } else {
-            // Desktop: direct download
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "spirit-meme.png";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1500);
-          }
-        }, "image/png");
-      } catch (e) {
-        // Very defensive fallback
-        const dataUrl = canvas.toDataURL("image/png");
-        if (isMobile && tabRef) {
-          tabRef.location.href = dataUrl;
+      canvas.toBlob(function(blob) {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        if (isMobile) {
+          tabRef.document.body.innerHTML = "<img style='width:100%;height:auto;display:block' src='" + url + "' />";
         } else {
           const a = document.createElement("a");
-          a.href = dataUrl;
+          a.href = url;
           a.download = "spirit-meme.png";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1500);
         }
-      }
+      }, "image/png");
     }
 
-    // Initial draw
     draw();
   </script>
 </body>
